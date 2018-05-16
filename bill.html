@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en" >
+
+<head>
+  <meta charset="UTF-8">
+  <title>Order-Invoice</title>
+
+
+
+      <link rel="stylesheet" href="css/style1.css">
+
+
+</head>
+
+<body>
+
+  <form id="orderForm"></form>
+
+
+
+    <script  > 			// Product data that would ordinarily be retrieved via Ajax call
+			var data = { products:
+				[
+  				  { "productId" : 33, "productName" : "Crocin", "price" : 1200 },
+  				  { "productId" : 15, "productName" : "Hifenac_P", "price" : 150 },
+				  { "productId" : 95, "productName" : "Ecospirin", "price" : 800 },
+				  { "productId" : 112, "productName" : "Pudin Hara", "price" : 10 },
+				  { "productId" : 147, "productName" : "Ultracet", "price" : 2.5 },
+				  { "productId" : 330, "productName" : "Tablet-P50", "price" : 5 }
+			  ]
+			};
+
+			var orderColumns = ["Product", "Price", "Quantity"];
+
+			// IIFE runs when the page loads: create the order tile
+			(function makeOrder() {
+				var orderTile,			// the tile container div for the order input
+					orderTileHeader,	// the header on the order tile
+					orderForm,			// the form element holding the table and inputs
+					orderTable,			// the table containing the rows of product data and input
+					orderTableHeader,	// the header row <tr> of the orderTable
+					i,					// counters for loops
+					j,
+					firstInput			// the input element on the first row in the table (for setting focus)
+
+				orderTile = document.createElement('div');
+				orderTile.id= 'orderTile';
+				orderTile.style.backgroundColor = '#ffffff';
+				orderTile.style.width = "300px";
+				orderTile.style.border = "1px solid #308D30";
+				orderTile.style.margin = "0 auto ";
+				orderTile.style.padding = "20px";
+
+				orderTileHeader = document.createElement('h1');
+				orderTileHeader.innerText = 'Order Entry';
+				orderTile.appendChild(orderTileHeader);
+
+				// Create the order table
+				orderTable = document.createElement('table');
+				orderTable.style.width = '100%';
+				orderTable.style.borderCollapse = 'collapse';
+
+				// Add table header row
+				orderTableHeader = orderTable.insertRow();
+
+				for (j = 0; j < orderColumns.length; j++) {
+					var td = orderTableHeader.insertCell(j);
+					td.style.fontWeight = "bold";
+					td.style.textAlign = "center";
+					td.appendChild(document.createTextNode(orderColumns[j]));
+				}
+				orderTable.appendChild(orderTableHeader);
+
+				// Table rows
+				for (i = 0; i < data.products.length; i++)	{
+					var tr,				// this table row
+						productCell,	// the cell on this row containing the product name
+						priceCell,		// the cell on this row containing the item price
+						quantityCell,	// the cell on this row containing the quantity input textbox
+						quantityInput	// the input element for entering the quantity for this item
+
+					tr = orderTable.insertRow(i + 1);  // skip the table header row
+
+					productCell = tr.insertCell(0);
+					productCell.style.width = '100%';
+					productCell.appendChild(document.createTextNode(data.products[i].productName));
+
+					priceCell = tr.insertCell(1);
+					priceCell.style.textAlign = "right";
+					priceCell.style.paddingRight = "20px";
+					priceCell.appendChild(document.createTextNode(data.products[i].price.toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,')));
+
+					quantityCell = tr.insertCell(2);
+					quantityInput = document.createElement('input');
+					quantityInput.type = "text";
+					quantityInput.classList.add("activeInput");
+					quantityInput.id = data.products[i].productId;
+					quantityInput.maxLength = 2;
+					quantityInput.size = 2;
+					quantityInput.style.marginLeft = "10px";
+					quantityInput.onblur = function () { invoice.validateQuantity(this); };
+					quantityInput.onchange = function () { invoice.updateInvoice(this); };
+					quantityCell.appendChild(quantityInput);
+				}
+
+				orderTile.appendChild(orderTable);
+
+				orderForm = document.getElementById("orderForm");
+				orderForm.appendChild(orderTile);
+
+				// set focus on the first textbox
+				firstInput = document.getElementById(data.products[0].productId);
+				firstInput.focus();
+			})();
+
+			// IIFE: create the invoice tile, which is populated dynamically from user input on the order tile
+			(function makeInvoiceContainer() {
+				var invoiceTile,		// the tile container div for the invoice output
+					invoiceTileHeader	// the header on the invoice tile
+
+				invoiceTile = document.createElement('div');
+				invoiceTile.id= 'invoiceTile';
+				invoiceTile.style.backgroundColor = '#ffffff';
+				invoiceTile.style.width = "400px";
+				invoiceTile.style.border = "1px solid #308D30";
+				invoiceTile.style.margin = "20px auto ";
+				invoiceTile.style.padding = "20px";
+
+				// Add the tile header
+				invoiceTileHeader = document.createElement('h1');
+				invoiceTileHeader.innerText = 'Invoice';
+				invoiceTile.appendChild(invoiceTileHeader);
+
+				// Add and hide the invoice tile
+				invoiceTile.style.visibility = "hidden";
+
+				document.body.appendChild(invoiceTile);
+			})();
+
+			// module for the invoice-related properties and methods; ordinarily this would be in an external .js file
+			var invoice = (function() {
+				var invoiceColumns = ["Quantity", "Product", "Price", "Total" ];
+
+				return {
+					addTableFooterRow: function(invoiceTable, caption, amount) {
+						var row,		// this table row
+							rowCell1,	// the first cell on this row
+							rowCell2,	// the second cell on this row
+							rowCell3	// the third cell on this row
+
+						row = invoiceTable.insertRow(-1);
+						rowCell1 = row.insertCell(0);
+						rowCell1.colSpan = 2;
+
+						rowCell2 = row.insertCell(1);
+						rowCell2.align = "right";
+						rowCell2.style.paddingRight = "1em";
+						rowCell2.appendChild(document.createTextNode(caption + ': '));
+
+						rowCell3 = row.insertCell(2);
+						rowCell3.align = "right";
+						rowCell3.appendChild(document.createTextNode(amount.toMoney()));
+					},
+					updateInvoice: function(input) {
+						var grandTotal,		// the invoice grand total of item prices, sales tas and shippibng charges
+							grandTotalRow,	// the table row containing the grand total data
+							invoiceTile,	// the invoice tile
+							invoiceTable,	// the invoice table containing the rows of product order data
+							invoiceTableHeader, // the header row <tr> on the invoice table
+							invoiceTotal,	// the sum of the invoice row totals (sum of price * quantity)
+							i,				// counters
+							j,
+							k,
+							lastItemIndex,	// the index of the last table row containing product items
+							lastRowIndex,	// the index of the absolutely last row on the table (grand total row)
+							productID,		// the identifier for this product
+							quantity,		// the quantity of this product that the user entered
+							shippingCharge,	// the rate applied to the total order to charge for shipping
+							salesTaxRate,	// the rate applied to the total order (excluding shipping) for sales tax
+							salesTaxAmount,	// the calculated amount of the sales tax
+							salesTaxRow,	// the table row containing the sales tax data
+							shippingChargeAmount, 	// the calculated amount of the shipping charge
+							shippingChargeRow, 		// the row containing the shipping charrge data
+							subTotalRow		// the table row containing subtotal data
+
+						// get the input quantity & identifier
+						invoiceTile = document.getElementById('invoiceTile');
+						invoiceTable = document.getElementById('invoiceTable');
+						productID = input.id;
+						quantity = input.value;
+						invoiceTotal = 0;
+						shippingCharge = (5 / 100);
+						salesTaxRate = (8 / 100);
+
+						// hide the invoice container & remove the table
+						invoiceTile.style.visibility = "hidden";
+
+						if (invoiceTable != null) {
+							invoiceTable.parentNode.removeChild(invoiceTable);
+						}
+
+						// update the array
+						for (i = 0; i < data.products.length; i++)	{
+							if (data.products[i].productId == productID) {
+								data.products[i].quantity = quantity;
+							}
+						}
+
+						// Create the invoice table
+						invoiceTable = document.createElement('table');
+						invoiceTable.id = 'invoiceTable';
+						invoiceTable.style.width = '100%';
+						invoiceTable.style.borderCollapse = 'collapse';
+						invoiceTile.appendChild(invoiceTable);
+
+						// Add table header row
+						invoiceTableHeader = invoiceTable.insertRow();
+
+						for (j = 0; j < invoiceColumns.length; j++) {
+							var td = invoiceTableHeader.insertCell(j);
+							td.style.fontWeight = "bold";
+							td.style.textAlign = "center";
+							td.appendChild(document.createTextNode(invoiceColumns[j]));
+						}
+
+						invoiceTable.appendChild(invoiceTableHeader);
+
+						// Table rows
+						for (k = 0; k < data.products.length; k++)	{
+
+							// Only insert a row for items with a quantity
+							if (data.products[k].quantity > 0) {
+								var tr, 			// this table row
+									quantityCell,	// the cell on this row containing the quantity ordered
+									productCell,	// the cell on this row containing the product name
+									priceCell,		// the cell on this row containing the price per item
+									itemTotal,		// the total price for the quantity ordered of this item
+									totalCell		// the cell containing the item total amount
+
+								tr = invoiceTable.insertRow(-1);
+								quantityCell = tr.insertCell(0);
+								quantityCell.style.textAlign = "center";
+								quantityCell.appendChild(document.createTextNode(data.products[k].quantity));
+
+								productCell = tr.insertCell(1);
+								productCell.appendChild(document.createTextNode(data.products[k].productName));
+
+								priceCell = tr.insertCell(2);
+								priceCell.style.textAlign = "right";
+								priceCell.style.paddingRight = "20px";
+								priceCell.appendChild(document.createTextNode(data.products[k].price.toMoney().toString()));
+
+								itemTotal = (data.products[k].price * data.products[k].quantity);
+								totalCell = tr.insertCell(3);
+								totalCell.style.textAlign = "right";
+								totalCell.appendChild(document.createTextNode(itemTotal.toMoney(2).toString()));
+
+								invoiceTotal += itemTotal;
+							}
+						}
+						// Subtotal, add the sales tax and shipping charges, then sum the invoice.
+						lastItemIndex = invoiceTable.rows.length - 1;
+						invoiceTable.rows[lastItemIndex].cells[3].style.borderBottom = "1px solid #000";
+
+						subTotalRow = invoice.addTableFooterRow(invoiceTable, "Subtotal", invoiceTotal);
+
+						salesTaxAmount = (invoiceTotal * salesTaxRate);
+						salesTaxRow = invoice.addTableFooterRow(invoiceTable, "Sales tax", salesTaxAmount);
+
+						shippingChargeAmount = (invoiceTotal * shippingCharge);
+						shippingChargeRow = invoice.addTableFooterRow(invoiceTable, "Shipping charge", shippingChargeAmount);
+
+
+						grandTotal = invoiceTotal + salesTaxAmount + shippingChargeAmount;
+						grandTotalRow = invoice.addTableFooterRow(invoiceTable, "Grand total", grandTotal);
+						lastRowIndex = invoiceTable.rows.length - 1;
+						invoiceTable.rows[lastRowIndex - 1].cells[2].style.borderBottom = "1px solid #000";
+						invoiceTable.rows[lastRowIndex].cells[1].style.fontWeight = "bold";
+						invoiceTable.rows[lastRowIndex].cells[2].style.fontWeight = "bold";
+						invoiceTable.rows[lastRowIndex].cells[2].style.borderBottom = "double #000";
+
+						// display the invoice container
+						invoiceTile.style.visibility = "visible";
+					},
+					validateQuantity: function(input) {
+						var quantity = input.value;
+
+						// Only accept numbers 0 - 99 or empty
+						if (quantity == "") quantity = 0;
+						else if (quantity < 0 || quantity > 99) {
+							alert ('Quantity must be between 0 and 99.');
+							input.focus();
+						}
+						else if (!isNaN(quantity)) return;
+						else {
+							alert(quantity  + ' is not an acceptable quantity.');
+							input.focus();
+						}
+					}
+				}
+			}());
+
+			/* format numbers as currency from  https://stackoverflow.com/questions/149055/how-can-i-format-numbers-as-money-in-javascript
+				decimal_sep: character used as deciaml separtor, it defaults to '.' when omitted
+				thousands_sep: char used as thousands separator, it defaults to ',' when omitted
+			*/
+			(Number.prototype.toMoney = function(decimals, decimal_sep, thousands_sep)
+			{
+			   var n = this,
+			   c = isNaN(decimals) ? 2 : Math.abs(decimals), //if decimal is zero we must take it, it means user does not want to show any decimal
+			   d = decimal_sep || '.', //if no decimal separator is passed we use the dot as default decimal separator (we MUST use a decimal separator)
+
+			   /*  according to [http://stackoverflow.com/questions/411352/how-best-to-determine-if-an-argument-is-not-sent-to-the-javascript-function]
+			   the fastest way to check for not defined parameter is to use typeof value === 'undefined'rather than doing value === undefined. */
+			   t = (typeof thousands_sep === 'undefined') ? ',' : thousands_sep, //if you don't want to use a thousands separator you can pass empty string as thousands_sep value
+
+			   sign = (n < 0) ? '-' : '',
+
+			   //extracting the absolute value of the integer part of the number and converting to string
+			   i = parseInt(n = Math.abs(n).toFixed(c)) + '',
+
+			   j = ((j = i.length) > 3) ? j % 3 : 0;
+			   return sign + (j ? i.substr(0, j) + t : '') + i.substr(j).replace(/(\d{3})(?=\d)/g, "$1" + t) + (c ? d + Math.abs(n - i).toFixed(c).slice(2) : '');
+			})();</script>
+
+
+
+
+</body>
+
+</html>

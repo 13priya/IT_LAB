@@ -1,0 +1,15 @@
+			body {
+				background: linear-gradient(to bottom right, #7EC67E, #BFE3BF);
+				background-repeat: no-repeat;
+    			background-attachment: fixed;
+				font-family: "Trebuchet MS";
+				margin-top: 20px;
+			}
+			h1 {
+				font-family: "Palatino Linotype";
+			}
+			.activeInput:focus {
+				background-color: #ffffcc;
+				font-family: "Courier New";
+				width: 40px;
+			}
